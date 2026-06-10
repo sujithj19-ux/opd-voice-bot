@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Crucial to allow streaming Google's high-quality TTS voice without being blocked -->
+    <meta name="referrer" content="no-referrer">
     <title>OPD Pre-Consultation Assistant</title>
     <!-- Tailwind CSS for modern styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons for clean UI elements -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
@@ -33,8 +35,8 @@
     </header>
 
     <!-- Main Content Container -->
-    <main class="flex-grow flex items-center justify-center p-4">
-        
+    <main class="flex-grow flex flex-col items-center justify-center p-4 space-y-4">
+
         <!-- API Key Missing Warning -->
         <div id="apiWarning" class="hidden max-w-md w-full bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center shadow-sm">
             <div class="inline-flex p-3 bg-amber-100 text-amber-800 rounded-full mb-4">
@@ -220,7 +222,6 @@
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null;
         let speechActive = false;
-        let currentVoice = null;
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
@@ -392,36 +393,59 @@ OBJECTIVES:
             }
         }
 
-        // Web Speech Synthesizer (TTS)
+        // Universal TTS player using Google Translate Audio Endpoint
         function speakText(text) {
             return new Promise((resolve) => {
-                // Cancel any running speech
+                // Cancel any standard running SpeechSynthesis
                 window.speechSynthesis.cancel();
                 updateStatus('Speaking...', 'green');
 
-                const utterance = new SpeechSynthesisUtterance(text);
-                
-                // Find a Malayalam voice if available
-                if (!currentVoice) {
-                    const voices = window.speechSynthesis.getVoices();
-                    currentVoice = voices.find(v => v.lang.includes('ml-IN')) || voices.find(v => v.lang.includes('ml')) || null;
+                // Remove formatting brackets from the spoken text
+                let cleanText = text.replace(/\[.*?\]/g, "").trim();
+
+                try {
+                    // Google Translate TTS endpoint (supports rich, natural Malayalam natively)
+                    const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=ml&client=tw-ob&q=${encodeURIComponent(cleanText)}`;
+                    const audio = new Audio(audioUrl);
+                    
+                    audio.onended = () => {
+                        resolve();
+                    };
+                    
+                    audio.onerror = (e) => {
+                        console.error("Google TTS failed, trying system fallback...", e);
+                        fallbackToWebSpeech(cleanText).then(resolve);
+                    };
+
+                    audio.play().catch(err => {
+                        console.warn("Autoplay blocked, running browser system speech...", err);
+                        fallbackToWebSpeech(cleanText).then(resolve);
+                    });
+
+                } catch (err) {
+                    fallbackToWebSpeech(cleanText).then(resolve);
                 }
+            });
+        }
+
+        // Web Speech API fallback (Runs if the user goes offline or requests are blocked)
+        function fallbackToWebSpeech(text) {
+            return new Promise((resolve) => {
+                const utterance = new SpeechSynthesisUtterance(text);
+                const voices = window.speechSynthesis.getVoices();
+                const currentVoice = voices.find(v => v.lang.toLowerCase().includes('ml'));
                 
                 if (currentVoice) {
                     utterance.voice = currentVoice;
                 } else {
-                    utterance.lang = 'ml-IN'; // Fallback hint
+                    utterance.lang = 'ml-IN'; // Fallback code
+                    // Strip punctuation so default English voice doesn't read "question mark"
+                    utterance.text = text.replace(/[?.,!]/g, " "); 
                 }
 
-                utterance.rate = 0.95; // Slightly slower for elder patience
-                
-                utterance.onend = () => {
-                    resolve();
-                };
-                utterance.onerror = () => {
-                    resolve();
-                };
-
+                utterance.rate = 0.95;
+                utterance.onend = () => resolve();
+                utterance.onerror = () => resolve();
                 window.speechSynthesis.speak(utterance);
             });
         }
@@ -514,14 +538,6 @@ OBJECTIVES:
                 micRing1.classList.remove('opacity-100', 'scale-110', 'animate-ping');
                 micIcon.className = "w-8 h-8 text-white";
             }
-        }
-
-        // Load speech voices asynchronously (fixes browsers requiring delayed loaded voices)
-        if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
-            speechSynthesis.onvoiceschanged = () => {
-                const voices = window.speechSynthesis.getVoices();
-                currentVoice = voices.find(v => v.lang.includes('ml-IN')) || voices.find(v => v.lang.includes('ml')) || null;
-            };
         }
     </script>
 </body>
