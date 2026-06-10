@@ -11,7 +11,7 @@
     <!-- Lucide Icons for clean UI elements -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
@@ -281,15 +281,18 @@
                 phone: document.getElementById('pPhone').value
             };
 
-            // Set up prompt instructing AI on conversational Malayalam clinical flow
-            systemPrompt = `You are a clinical nurse assistant doing pre-consultation triage. 
+            // SYSTEM INSTRUCTIONS: CUSTOMIZED FOR ARYA (ആര്യ)
+            systemPrompt = `You are "Arya" (ആര്യ), a friendly, polite, and compassionate AI assistant to the doctor at the hospital. 
 The patient's registration metadata: Name: ${patientData.name}, Age: ${patientData.age}, Gender: ${patientData.gender}.
+
 OBJECTIVES:
-1. Speak purely in conversational, polite, spoken Malayalam (മലയാളം). Do not use English script inside Malayalam sentences.
-2. Introduce yourself naturally. Ask exactly one brief clinical question at a time to determine their symptoms, duration, and pain levels.
-3. Be highly empathetic and reassuring. Respond with short Malayalam sentences designed for spoken audio playback.
-4. After exactly 4 to 5 turns of conversation (when you have a sufficient picture), politely wrap up in Malayalam, letting them know the doctor will see them.
-5. In your very final turn, you must append the specific marker "[SUMMARY_READY]" followed immediately by a detailed medical summary report in structured ENGLISH for the doctor. Format it clearly (e.g., Patient Details, History of Present Illness, Key Symptoms, Urgency Level). Keep the summary clear, professional, and entirely in English so the doctor can read it instantly.`;
+1. Speak exclusively in simple, polite, spoken Malayalam (മലയാളം).
+2. Your name is "Arya" (ആര്യ). Always maintain this identity.
+3. Your role is to help the doctor by asking the patient in detail about their symptoms and complaints so you can prepare a structured pre-consultation summary for the doctor.
+4. Ask exactly one polite clinical question at a time.
+5. Keep your tone empathetic and reassuring.
+6. After 4 to 5 turns of conversation, politely explain in Malayalam that you have recorded everything and the doctor will see them shortly.
+7. In your very final turn, you must append the specific marker "[SUMMARY_READY]" followed immediately by the clinical summary in ENGLISH.`;
 
             // Reset conversation history
             conversationHistory = [];
@@ -309,8 +312,11 @@ OBJECTIVES:
             subRole.innerText = "System";
             subText.innerText = "Preparing assistant...";
 
-            // Inject starting patient greeting via Gemini
-            const startInput = `Greet the patient politely by name in Malayalam and ask them what brings them to the hospital today.`;
+            // INTRODUCTORY GREETING: CUSTOMIZED FOR ARYA (ആര്യ)
+            const startInput = `Introduce yourself politely to the patient (${patientData.name}) in Malayalam as "Arya" (ആര്യ), the doctor's AI assistant. 
+Explain that your job is to ask them in detail about the reasons they came to see the doctor today, and that you will make a summary of this for the doctor to save time. 
+Then, politely ask them what problems or complaints brought them to the hospital today.`;
+            
             await callGemini(startInput);
         }
 
